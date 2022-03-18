@@ -1,0 +1,890 @@
+---
+title: 'VICTORIA FOREST FIRE OCCURRENCES AND LAND SURFACE TEMPERATURE ANOMALIES'
+output:  pdf_document
+---
+
+
+```{r,echo=FALSE,suppressWarnings = TRUE,suppressMessages =TRUE,suppressPackageStartupMessages =TRUE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE, 
+                      message = FALSE, warnings = FALSE)
+library(sf)
+library(sp)
+library(terra)
+library(RCurl)
+library(rvest)
+library(MODIStsp)
+library(rts)
+library(gdalUtils)
+library(rgdal)
+library(ggplot2)
+library(raster)
+library(tiff)
+library(rgdal)
+library(dplyr)
+library(tidyr)
+library(rasterVis)
+library(lattice)
+library(purrr)
+library(lubridate)
+library(tidyverse)
+library(spacetime)
+library(lubridate)
+library(STRbook)
+library(leaps)
+library(lmtest)
+library(nlme)
+library(ape)
+library(broom)
+library(FRK)
+library(RColorBrewer) 
+library(knitr)
+library(ggthemes)
+library(stargazer)
+```
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+\newpage
+
+
+## Introduction :
+
+Researchers have observed that land surface temperature anomalies could be the reason of lower moisture content of vegetations and could increase the possibility of fire. 
+
+## Objective
+
+The objective for this paper is:
+
+Assess the relationship between land surface temperature(LST) anomalies and forest fire occurrence  as well as further exploring related fire prediction factors.
+
+
+## Hypothesis
+
+Null Hypothes :Land surface temperature anomaly has no relationship with Fire occurrences.
+Alternate Hypothesis: Land surface temperature anomaly has some relationship with Fire occurrences.
+
+
+## Study Area:
+
+Victoria, as one of the states which has suffered most from
+wildfires in Australia, has also been affected by cause of climate change (Commissioner for Environmental Sustainability Victoria, 2018).
+
+The province of Victoria comprises a total land surface area of 227,416 km2, located in south east Australia (141°–150°E, 34°–39°S) (Stewart & Nitschke, 2017). The area is composed of
+Australian Alps and plains, dominated by woody perennial vegetation (hardwood, softwood cover and large shrubs), with woody horticulture, grassland, urban and lakes. Forest cover accounts for over 25%, approximately 64 000 km2 including fire-intensive forest types like grassland, woody cover especially Eucalyptus regnans (Commissioner for Environmental Sustainability Victoria, 2018). The Victorian climate has been continuously warming since 2000s in the central and southern parts of the state, which causes a greater amount of fire occurrence (Stewart & Nitschke, 2017). 
+
+
+
+## Data 
+
+1. MODIS LST Dataset
+
+A dataset of daily gridded Terra-MODIS LST data (product MOD11A1, collection 6) from 2001 to 2019 retrieved from the Land Processes Distributed Active Archive Centre (LP DAAC, https://e4ftl01.cr.usgs.gov/) has been used for this study. The MOD11A1 V6 product provides daily land surface temperature (LST) values in a 1200 x 1200 kilometer grid.
+
+Choosing diurnal instead of nocturnal data, and Terra-MODIS rather than Aqua-MODIS. MODIS Terra Satellite daily datasets could be calculated mean LST anomalies, standard deviation from January in each fire season peaks during the previous 20 years.
+
+2. Fire Ignition Dataset:
+
+This dataset describes recorded fire’s spatial information since 2001 to 2019, covering bushfires and DELWP (Department of Environment, Land, Water and Planning) planned burn information in state of Victoria. CFA data on fires occurring on private land has been covered from 2009.
+The dataset includes fire ignition, recorded date and time of fire extinction, and presumed causes (Department of Environment, Land, Water & Planning of Victoria, 2015).
+
+Fire causes summary in January from 2001 to 2019
+
+3. Variables :
+
+Response : (derived variable)(Fire(0/1) binary variable. If (number of fires)Firenum_lodate >0, Fire =1 else Fire =0
+Predictor: Land Surface Temprature anomaly(LST), latitude(lat), longitude(lon), t(derived variable: time sequence)
+Spatial location : Victoria, Australia
+(Bounding box:  xmin: 140.9617 ymin: -39.13396 xmax: 149.9763 ymax: -33.99605)(use ozmap 'R' function)
+Time : Month of January across 2001 to 2019
+
+
+
+## Methodology
+
+
+1. Study the LST Data
+   
+Read the data from tiff files.(Tiff files are data stored as images)
+
+i)   Read the Land Surface Temprature data from two tiff files for the month of January from 2001 - 2019 as  "Raster object". 
+ii)  There are two raster objects LST1_15 and LST1_16.
+ii)  Each raster object has multiple raster layers and a projection string.
+iii) Since both the tiff files are for Victoria, Australia their coordinate reference system are same.
+iv)  LST1_15 has(15 x 19 layers : Each layer has data for a single date) and LST16_31 has(16x 19) layers.
+v)   Extract all the layers and stack them and convert the stack into a data frame. Since data frames are easy to analyse.
+
+
+
+2. Study the Fire data
+
+a. Study the distribution of fire data across different Fire causes and across all years.
+
+
+4. Merge the LST Data and Fire Data.
+
+a. Assign the coordinate reference system(crs) of LST data to Fire data.
+b. Match(overlay on) the coordinates Fire data with LST data using 'Nearest neighbor coordinate matching'.
+c. Aggregate the data by month.
+d. Study the aggregated merged data set.
+
+e. Study the Empirical Spatial and temporal LST mean.
+
+f. Empirical ST Covariogram :Study the covariabillity in the LST data as a function of temporal lags and spatial lags.
+
+
+5. Modelling
+
+a.  Study the LST and Fire relationship : Pixelwise binary regression to study the relation between LST and Fire.
+b.  Forecasting: Predict Fire incidents using temporal basis and spatial random effects.
+
+
+## Raw Land Surface Temprature Data stored in  Tiff files
+
+
+```{r,eval=TRUE,echo=FALSE}
+
+LST_anomaly1_15<-stack("/Users/savitaupadhyay/Desktop/Victoria Forest Fires/Data/RawData/TiffData/LST_anomaly1_15.tif")
+
+LST_anomaly16_31<-stack("/Users/savitaupadhyay/Desktop/Victoria Forest Fires/Data/RawData/TiffData/LST_anomaly16_31.tif")
+```
+
+
+```{r,eval=TRUE,echo=FALSE}
+raster::plot(LST_anomaly1_15,col=terrain.colors(10),main= "LST anomaly Jan1_15(2001 - 2019)")
+
+```
+
+Since summer is at the peak in Australia in the month of January. Temperature is on the higher side. [ Input data is LST for entire Australia. I will subset the information for the state of Victoria for further analysis]. 
+
+Each plot has data for one day of the month of January accorss all years. Therefore, the first plot is the LST input data for January 1 for all the 19 years from 2001 to 2019
+
+```{r,eval=FALSE,echo=FALSE}
+raster::plot(LST_anomaly16_31,col=terrain.colors(10),main= "LST anomaly Jan16_31(2001 - 2019)")
+```
+
+There are some blank spaces in the input data(no colors) implying missing data.
+
+
+
+```{r,echo=FALSE}
+load("/Users/savitaupadhyay/Desktop/Victoria Forest Fires/Data/ProcessedData/LST_df_all_long.RData")
+load("/Users/savitaupadhyay/Desktop/Victoria Forest Fires/Data/ProcessedData/Fire_df.RData")
+#LST_df_all_long = LST_df_all_1ong
+Fire.orig = Fire
+
+Fire[which(((Fire$CAUSE=="NULL" ) | (is.na(Fire$CAUSE))) & (Fire$FIRE_NUM>0)),"CAUSE"]<-"UNKNOWN"
+```
+
+\newpage
+## Victoria, Australia - xmin: 140.9617 ymin: -39.13396 xmax: 149.9763 ymax: -33.99605 
+
+
+```{r,echo=FALSE}
+
+LST_df_all_1ong  <- LST_df_all_1ong[which(LST_df_all_1ong$lat > -39 & LST_df_all_1ong$lat < -33),]
+LST_df_all_1ong  <- LST_df_all_1ong[which(LST_df_all_1ong$lon > 140 & LST_df_all_1ong$lon < 150),]
+
+```
+
+```{r,echo=FALSE,eval = TRUE}
+LST_daily_Victoria1_15 <- subset.data.frame(LST_df_all_1ong,LST_df_all_1ong$day <16)
+g_col_scale <- ggplot() +
+  geom_raster(data = LST_daily_Victoria1_15, aes(x = lon, y = lat, fill = LST)) +
+    facet_wrap(year ~ .) +
+    coord_equal() +
+  theme_void() +
+  theme(
+    legend.position = "bottom"
+)
+
+g_col_scale + theme_void() +
+    scale_fill_distiller(palette = "Spectral")
+
+rm(LST_daily_Victoria1_15)
+rm(g_col_scale)
+
+#rm(LST_anomaly1_15)
+#rm(LST_anomaly16_31)
+```
+
+
+
+##  Fire data stored in shape files.[Saptialpoint objects]
+
+The fire data has  location(longitude,latitude), date, fire causes and number of fires.
+
+\newpage
+## There are 24 known causes of fires. Here is the summary of Fire Causes.
+
+```{r,echo=FALSE}
+
+Fire$FIRE_STAT <- NULL
+Fire <- Fire[which(Fire$FIRE_NUM <999),]
+sum(is.na(Fire))
+
+Fire_causes <- Fire %>% group_by(CAUSE) %>%summarise(.,FIRE_INCIDENTS = sum(FIRE_NUM))%>%arrange(desc(FIRE_INCIDENTS))
+
+#barplot(height=Fire_causes$FIRE_INCIDENTS , names=tolower(unique(Fire_causes$CAUSE)), col="#69b3a2",
+#las =.001)
+
+```
+```{r,echo=FALSE}
+Fire_causes
+```
+59965(highest across all fire cause)number of fires reported due to "Lightning".
+
+\newpage
+
+##  LST Anomalies Calculation:
+
+To analyse each year's LST variation I have chosen  January data between the year 2001 and 2019 as the fire season peaks in January.
+
+LST anomalies = $\frac{x_{DOY} - \bar{x}_{DOY}}{\sigma_{DOY}}$
+
+where:
+
+$x_{DOY}$ is  observed LST for pixel x,y on day of year in year y
+
+$\bar{x}_{DOY}$ is mean LST of day of year over 19 years
+
+${\sigma_{DOY}}$ is standard deviation of  LST of day of year over 19 years
+
+\newpage
+## Summary : Fire count across years
+```{r,echo=FALSE}
+
+Fire_year <- Fire %>% group_by(year(FIRE_START) ) %>%summarise(.,FIRE_INCIDENTS = sum(FIRE_NUM))%>%arrange(desc(FIRE_INCIDENTS))
+Fire_year
+
+Fire_year2019 <- Fire[which(Fire$year ==2019),] %>% group_by(CAUSE) %>%summarise(.,TotalFire = sum(FIRE_NUM))%>%arrange(desc(TotalFire))
+
+
+#Fire_year
+#barplot(height=Fire_year$FIRE_INCIDENTS , names=Fire_year$year, 
+#col="#69b3a2",
+#las =2)
+#rm(Fire_year)
+```
+```{r,echo=FALSE}
+Fire_year
+```
+
+38287(highest in the year in entire Victoria region)number of fires reported in 2019.
+
+
+## Summary : 2019 Fire causes Summary
+
+```{r,echo=FALSE}
+Fire_year2019
+```
+
+14963 number of fires reported in 2019 due to 'Unattended Camp Fire - contained within boundary.'
+In 2019, 575 fires were due to unknown reasons.
+
+\newpage 
+
+## Connect Fires and the Land Surface Temperature Data : Nearest Neighbor coordinate matching
+
+```{r, echo=FALSE}
+
+
+xy_lst <- LST_df_all_1ong %>% dplyr::select(lon,lat) %>% unique(.)
+xy_fires <- Fire %>%  dplyr::select(lon,lat) %>% unique()
+
+ind_nearestloc <- apply(fields::rdist(x1=xy_fires,x2=xy_lst),1,function(rr)which(rr==min(rr)))
+xy_fires <- xy_fires %>% bind_cols(xy_lst[ind_nearestloc,])
+names(xy_fires) <- c("lon","lat","lon_nn","lat_nn")
+
+Fire <- Fire %>%
+  left_join(xy_fires,by=c("lon","lat")) %>% 
+  group_by(lon,lat,lon_nn,lat_nn,FIRE_START,CAUSE) %>% 
+  summarise(Firenum_locdate=1:n(),Firenum = (FIRE_NUM)) %>% 
+  ungroup()
+
+#Fire1 <- Fire[which(Fire$Firenum < 2),]
+sum(is.na(Fire$Firenum))
+
+df_all_long <- LST_df_all_1ong %>% 
+  left_join(Fire,by=c("lat"="lat_nn","lon"="lon_nn","date"="FIRE_START"))
+
+
+```
+
+
+
+The plot shows coordinate matching of Land Surface Temperature Data and Fire Data. using 'nearest neighbor coordinate matching'. 
+
+```{r, echo=FALSE}
+with(xy_fires,plot(lat,lon,col="black",pch=19,cex=0.3,
+                   main="true fire coords vs matched nn coords"))
+with(xy_fires,points(lat_nn,lon_nn,col="red",pch=19,cex=0.3))
+legend("topleft",legend=c("true","nn-match"),pch=c(19,19),
+       col=c("red","black"))
+```
+There are two outliers in the the data.I will remove these two outliers. Fire data is difficult to report the exact origin of Fire. It is reported where it was first observed.
+
+```{r, echo=FALSE}
+df_all_long$difflon <- abs(round((df_all_long$lon.y-df_all_long$lon),5))
+df_all_long$difflat <- abs(round((df_all_long$lat.y-df_all_long$lat),5))
+
+df_all_long <- df_all_long[-which(df_all_long$difflon==max(na.omit(df_all_long$difflon))),]
+df_all_long <- df_all_long[-which(df_all_long$difflat==max(na.omit(df_all_long$difflat))),]
+```
+
+\newpage
+
+```{r echo=FALSE}
+library(viridis)
+df_all_long %>% 
+  filter(!is.na(Firenum)) %>% 
+  group_by(year,lon,lat) %>% 
+  summarise(count=n(),temp=mean(LST)/10000) %>% 
+  ggplot(aes(x=lat,y=lon)) +
+  geom_point(aes(size=count,color=temp)) +
+  facet_wrap(year~.) +
+  scale_color_viridis_c() +
+  labs(title="Total number of fires and mean temp anomaly by location and year") +
+  theme_bw()
+
+sum(is.na(df_all_long$Firenum))
+
+df_all_long2 = df_all_long[which(is.na(df_all_long$lat.y) & is.na(df_all_long$lat.y)),]
+```
+
+
+
+
+```{r, echo=FALSE}
+
+df_merge <- df_all_long %>% 
+         group_by(id,lon,lat,year) %>%
+        summarize(temp = mean(LST),Firenum = sum(Firenum,na.rm = TRUE))
+
+t_m <- as.data.frame(sort(unique(df_merge$year)))
+t_m$t = seq(1,nrow(t_m),1)
+colnames(t_m)<-c("year","t")
+df_merge = left_join(df_merge,t_m)
+
+sum(is.na((df_merge$Firenum)))
+df_merge$Fire <-if_else(df_merge$Firenum>0,1,0)
+
+rm(t_m)
+#rm(df_all_long)
+
+```
+
+
+From the Spatial mean plot for Land surface temperature and Fire data it appears that the southern Victoria is the overall most affected part due to average rise in temperature over the period of 19 years(our study time period.)
+
+
+```{r,echo=FALSE}
+lim_lat <- range(df_merge$lat)  # latitude range
+lim_t <- range(df_merge$t) # time range
+lat_axis <- seq(lim_lat[1], # latitude axis
+                lim_lat[2],
+                length=25) 
+t_axis <- seq(lim_t[1], # time axis
+              lim_t[2],
+              length=100)
+lat_t_grid <- expand.grid(lat = lat_axis,
+                          t = t_axis)
+
+```
+
+
+```{r cache=T,echo=FALSE}
+LST_grid <- df_merge
+dists <- abs(outer(df_merge$lat, lat_axis, "-")) 
+LST_grid$lat <- lat_axis[apply(dists, 1, which.min)]
+```
+
+
+```{r,echo=FALSE}
+LST_lat_Hov <- LST_grid %>% group_by(lat, t) %>% 
+  summarise(z = mean(temp))
+```
+
+
+
+```{r,echo=FALSE}
+LST_lat_HovFire <- LST_grid %>% group_by(lat, t) %>% 
+  summarise(z = sum(Fire))
+```
+
+
+```{r,echo=FALSE}
+lim_lon <- range(df_merge$lon)  # latitude range
+lim_t <- range(df_merge$t) # time range
+lon_axis <- seq(lim_lon[1], # latitude axis
+                lim_lon[2],
+                length=25) 
+t_axis <- seq(lim_t[1], # time axis
+              lim_t[2],
+              length=100)
+lon_t_grid <- expand.grid(lon = lon_axis,
+                          t = t_axis)
+
+```
+
+
+```{r cache=T,echo=FALSE}
+LST_grid2 <- df_merge
+dists <- abs(outer(df_merge$lon, lon_axis, "-")) 
+LST_grid2$lon <- lon_axis[apply(dists, 1, which.min)]
+```
+
+
+```{r,echo=FALSE}
+LST_lon_Hov <- LST_grid2 %>% group_by(lon, t) %>% 
+  summarise(z = sum(temp))
+```
+
+\newpage
+
+## Hovmoller Plot : Temprature Anomalies for all years across Latitude and Longitude
+
+
+```{r,echo=FALSE}
+
+par(c(2,1))
+ggplot(LST_lat_Hov) + # take data 
+  geom_tile(aes(x = lat, y = t, fill = z)) + # plot
+  fill_scale(name = "degF") + 
+  scale_y_reverse() + 
+  ylab("Years") + 
+  xlab("Latitude (degrees)") +
+#  coord_fixed(xlim = c(-39.5,-33.5),
+#              ylim= c(2001,2019)) + 
+  theme_bw()
+
+ggplot(LST_lon_Hov) + # take data 
+  geom_tile(aes(x = lon, y = t, fill = z)) + # plot
+  fill_scale(name = "degF") + 
+  scale_y_reverse() + 
+  ylab("Years") + 
+  xlab("Longitude (degrees)") + 
+#  coord_fixed(xlim = c(139,149),
+#              ylim= c(2001,2019)) + 
+
+  theme_bw()
+```
+
+
+\newpage
+
+## Hovmoller Plot : Fire  for all years across Latitude and Longitude
+
+```{r,echo=FALSE}
+LST_lon_HovFire <- LST_grid2 %>% group_by(lon, t) %>% 
+  summarise(z = sum(Fire))
+```
+
+```{r,echo=FALSE}
+
+par(c(2,21))
+
+ggplot(LST_lat_HovFire) + # take data 
+  geom_tile(aes(x = lat, y = t, fill = z)) + # plot
+  fill_scale(name = "degF") + 
+  scale_y_reverse() + 
+  xlab("Latitude (degrees)") +
+#  coord_fixed(xlim = c(-39.5,-33.5),
+#              ylim= c(2001,2019)) + 
+  theme_bw()
+
+ggplot(LST_lon_HovFire) + # take data 
+  geom_tile(aes(x = lon, y = t, fill = z)) + # plot
+  fill_scale(name = "degF") + 
+  scale_y_reverse() + 
+  ylab("Years") + 
+  xlab("Longitude (degrees)") + 
+#  coord_fixed(xlim = c(139,149),
+#              ylim= c(2001,2019)) + 
+    theme_bw()
+```
+
+\newpage
+## Modelling
+
+
+## Fitting a GLS model and comparing to LS estimates
+
+
+
+```{r,echo=FALSE}
+LST_df = df_merge
+LST_df$Firenum <-NULL
+
+date_lst = as.data.frame(df_merge$t)
+date_lst$date = paste0(2000+date_lst$`df_merge$t`,"-1-1")
+date_lst$date <- as.Date(date_lst$date)
+
+LST_df = as.data.frame(cbind(LST_df,date_lst))
+
+
+```
+
+Adding spatial basis functions to create $X$ matrix
+
+```{r,echo=FALSE}
+# making the spatial basis fns with FRK::auto_basis()
+G = auto_basis(
+  data = unique(LST_df[, c("lon", "lat")]) %>% # to SP object
+    SpatialPoints(),
+  nres = 1,  #number of resolutions
+  type = "Gaussian" # Gaussian BF
+)
+
+# Evaluate basis fns at locations of interest
+coords = as.matrix(LST_df[, c("lon", "lat")])
+S = eval_basis(basis = G,     # basis functions
+                s =  coords) %>%   # eval at these locations
+  as.matrix()   #conv. to matrix
+
+#create column names for basis functions
+colnames(S) = paste0("B", 1:ncol(S))
+
+# add basis function columns to the dataframe; drop unnecessary columns 
+LST_df = bind_cols(LST_df, data.frame(S)) %>%
+  dplyr::select(-year, date)
+
+LST_df <- LST_df[,!(colnames(LST_df) =="df_merge$t")]
+```
+
+### Variable Selection 
+
+The method implemented in the `leaps` package for best subsets can be found in the function `regsubsets`
+```{r,echo=FALSE}
+data1 = LST_df[,!(colnames(LST_df) %in% c("id","date"))] 
+
+
+data1 = LST_df[,!(colnames(LST_df) %in% c("id","date"))] 
+regfit.full = regsubsets(
+Fire ~ temp + (lon + lat + t) ^ 2 + .,
+                data = data1,
+  method = "forward",
+  nvmax = 7
+  )
+
+
+res.sum<-summary(regfit.full)
+data.frame( adj.r2=which.max(res.sum$adjr2), 
+             CP=which.min(res.sum$cp), BIC=which.min(res.sum$bic) )
+
+coef(regfit.full,7)
+capture.output(coef(regfit.full,7),file = "test.doc")
+```
+
+The best model is the one including all terms when using adjusted R-squared and Mallows-CP, I'll go with that one.
+
+
+
+```{r,echo=FALSE}
+# fit model with ols
+
+data11 = data1[which(data1$t<18),]
+data12 = LST_df[which(data1$t>=18),]
+
+LST_df_lm = glm(Fire ~ temp + (lon + lat + t) ^ 2 + .,
+                data = data11,family = "binomial")
+
+#add residuals to dataframe
+LST_df = LST_df %>%
+  modelr::add_residuals(LST_df_lm)
+
+summary(LST_df_lm)
+```
+\newpage
+
+```{r,echo=FALSE}
+LST_df$year = as.factor(LST_df$t + 2000)
+LST_df$id = as.character(LST_df$id)
+LST_df %>% 
+  filter(t %in% 18:19) %>% 
+  ggplot() +
+  geom_tile(aes(x = lon, y = lat, fill = resid)) +
+  facet_wrap(year~.)+
+  fill_scale(name = "degK") +
+  geom_point(data = filter(LST_df, 
+                           ((id == "23369") | (id == "19438")) & 
+                             t %in% 18:19),
+             aes(lon, lat), color = "black",
+             pch = 2, size = 4) +
+  coord_quickmap() +
+  theme_bw() +
+  ggtitle("yearly Residuals ")
+```
+
+
+The plot seems to show both spatial and temporal dependence. i.e., points that are close to each other in space and time tend to have similar residuals. Next, I formally test for dependence using Moran's I (for spatial dependence) and the Durbin-Watson (for temporal dependence).   
+
+First up: Moran's I.
+
+# Moran's I   
+
+Create function for calculating Moran's I:   
+
+```{r,echo=FALSE}
+get.spMoransI = function(mm){
+  df = LST_df %>% 
+               filter(t == mm) %>% 
+              na.omit()
+  station.dists = df %>% 
+    dplyr::select(lon, lat) %>%    # extract coords.
+    dist() %>%              # comp. dists.
+    as.matrix()             # conv. to matrix
+  W = 1/station.dists       # weight matrix
+  diag(W) = 0               # 0 on diag
+  Moran.I(df$resid,W)       # run Moran's I
+}
+```
+
+Get Moran's I test statistics and p-values for the last 5 years in my analysis (2015-2019); plot with Bonferonni adjustment:      
+
+```{r,echo=FALSE}
+t1 = as.factor(c(18:19))
+
+MoransI_results = t1 %>% 
+  map_dfr(~ get.spMoransI(.))
+
+kable(MoransI_results, caption = "Moran's I Results")
+
+MoransI_results %>% 
+  ggplot() +
+  geom_line(aes(x = t1, y = p.value/(0.05/15))) +
+  ggtitle("p-values for Spatial Moran's I Test ", 
+          subtitle = "with Bonferroni Correction") +
+  theme_clean()
+```
+
+The p-values for all years appear to be exactly zero. This implies that there is evidence for some spatial dependence within the spatial locations at each year.
+
+
+### Temporal Residuals  
+
+Let's visualize the temporal component for the location id :23369 and 19438. These are the same locations that were denoted by triangles in the spatial residuals plot.      
+
+
+```{r,echo=FALSE}
+LST_df %>%
+  filter((id == "23369") | (id == "19438"))%>%
+  mutate(lat= as.factor(lat)) %>%
+  ggplot(aes(x = t, y = resid)) +
+  geom_line(aes(group = lat, colour = lat)) +
+  geom_point(aes(group = lat, colour = lat),
+             pch = 20, size = 3) +
+  #scale_color_discrete(labels = c("Australia", "Maui")) +
+  labs(color = "id") +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  ggtitle("Temporal Residuals ",
+          subtitle = "Time period: 2001-2019") +
+  theme_clean()
+```
+
+
+
+#### DW-statistic 
+
+
+The temporal dependence present in the residuals can be analyzed one location point at a time
+
+```{r,echo=FALSE}
+# first create a nested data object
+nested_LST_df = LST_df %>%
+  group_by(lon, lat) %>%
+  drop_na() %>%
+  nest()
+
+head(nested_LST_df)
+```
+
+
+```{r,echo=FALSE}
+# now define the Durbin-Watson test function
+dwtest_singlest = function(data) {
+  dwtest(resid ~ 1, data = data)
+}
+
+# test function with first station
+dwtest_singlest(nested_LST_df$data[[1]]) %>%
+  tidy()
+
+# run the function for each coordinate point using map, but since
+# I want a data frame use the map version map_df
+LST_df_DW = nested_LST_df %>%
+  mutate(dwtest = map(data, dwtest_singlest)) %>%  #run test at each station
+  mutate(test_df = map(dwtest, tidy)) %>%
+  unnest(test_df)
+
+head(LST_df_DW)
+```
+
+```{r,echo=FALSE,eval=FALSE}
+LST_df_DW %>%
+  ggplot() +
+  geom_line(aes(x = 1:nrow(LST_df_DW), y = p.value), color = "steelblue") +
+  ggtitle("Durbin-Watson p-values") +
+  theme_clean()
+```
+
+# Percentage of coordinates with signif p.vals after Bonferroni correction  
+
+```{r,echo =FALSE}
+
+mean(LST_df_DW$p.value < 0.05 / nrow(LST_df_DW)) * 100
+
+nrow(LST_df_DW)
+```
+
+Out of the 2261 distinct coordinates, about 1.747% of them had significant p-values, meaning that in about 1.747% of the coordinates, I would reject the hypothesis of temporal independence (they display serial correlation).   
+
+
+\newpage
+
+
+
+Land Surface Temperature anomaly and Fire across years
+
+## 1. All Anomalies
+
+```{r,echo=FALSE}
+Fire_year <- df_merge  %>% group_by(year) %>%summarise(.,TotalFire = sum(Firenum,na.rm = TRUE)/10)%>%arrange(desc(year))
+
+LSTavg <- df_merge   %>% group_by(year) %>%summarise(.,avg_temp = (mean(temp))/10)
+
+LSTavgFire <- df_merge  %>%filter(Firenum >0 ) %>% group_by(year) %>%summarise(.,avg_fire_temp =(mean(temp)))
+xdata  <- left_join(Fire_year,LSTavg) 
+xdata <- left_join(xdata,LSTavgFire)
+
+ plot(xdata$year, xdata$avg_temp,type ="o",col="green", pch="o", lty=1, ylim=c(-2600,2600) ,xlab = "year",ylab = "Values")
+
+
+ points(xdata$year, xdata$TotalFire, col="dark red",pch="+",xlab = "year",ylab = "Values/10")
+ lines(xdata$year, xdata$TotalFire, col="dark red", lty=3)
+ 
+ legend(2001,1800,legend=c("Average LST","Fire count"), col=c("green","dark red"),
+                                   pch=c("o","*","+"),lty=c(1,2), ncol=1,cex = 0.8)
+
+
+
+```
+
+
+
+## 2. Positive  Anomalies
+```{r,echo=FALSE}
+
+LSTanomaly <- df_merge[df_merge$temp>0,]
+sum(is.na(LSTanomaly$Firenum))
+LSTanomaly.vic <- subset(LSTanomaly,(LSTanomaly$lon >140) & (LSTanomaly$lon < 150))
+LSTanomaly.vic <- subset(LSTanomaly,(LSTanomaly$lat >-40) & (LSTanomaly$lat < -33))
+LSTanomalyFire <- subset(LSTanomaly.vic,LSTanomaly.vic$Firenum >0)
+LSTanomaly.vic.orig = LSTanomaly.vic
+
+
+
+```
+
+
+```{r,echo=FALSE}
+
+Fire_year <- LSTanomaly.vic.orig  %>% group_by(year) %>%summarise(.,TotalFire = sum(Firenum))%>%arrange(year)
+
+
+LSTavg <- LSTanomaly.vic.orig  %>% group_by(year) %>%summarise(.,avg_temp = (mean(temp)))
+
+xdata  <- left_join(Fire_year,LSTavg) 
+
+
+ plot(xdata$year, xdata$avg_temp,type ="o",col="green", pch="o", lty=1, ylim=c(0,5000) ,xlab = "year",ylab = "Values")
+
+
+ points(xdata$year, xdata$TotalFire, col="dark red",pch="+",xlab = "year",ylab = "Values/100")
+ lines(xdata$year, xdata$TotalFire, col="dark red", lty=3)
+ 
+ legend(2002,4000,legend=c("Average LST","Fire count"), col=c("green","dark red"),
+                                   pch=c("o","*","+"),lty=c(1,2), ncol=1,cex = 0.8)
+
+
+
+```
+
+## 3. Negative  Anomalies
+
+```{r,echo=FALSE}
+
+LSTanomaly <- df_merge[df_merge$temp<0,]
+sum(is.na(LSTanomaly$Firenum))
+LSTanomaly.vic <- subset(LSTanomaly,(LSTanomaly$lon >140) & (LSTanomaly$lon < 150))
+LSTanomaly.vic <- subset(LSTanomaly,(LSTanomaly$lat >-40) & (LSTanomaly$lat < -33))
+LSTanomalyFire <- subset(LSTanomaly.vic,LSTanomaly.vic$Firenum >0)
+LSTanomaly.vic.orig = LSTanomaly.vic
+
+
+
+```
+
+
+```{r,echo =FALSE}
+
+Fire_year <- LSTanomaly.vic.orig  %>% group_by(year) %>%summarise(.,TotalFire = sum(Firenum))%>%arrange(year)
+
+
+LSTavg <- LSTanomaly.vic.orig  %>% group_by(year) %>%summarise(.,avg_temp = (mean(temp)))
+
+xdata  <- left_join(Fire_year,LSTavg) 
+
+
+ plot(xdata$year, xdata$avg_temp,type ="o",col="green", pch="o", lty=1, ylim=c(-3200,17000) ,xlab = "year",ylab = "Values")
+
+
+ points(xdata$year, xdata$TotalFire, col="dark red",pch="+",xlab = "year",ylab = "Values/100")
+ lines(xdata$year, xdata$TotalFire, col="dark red", lty=3)
+ 
+ legend(2002,10000,legend=c("Average LST","Fire count"), col=c("green","dark red"),
+                                   pch=c("o","*","+"),lty=c(1,2), ncol=1,cex = 0.8)
+
+
+
+```
+
+The line  plot for Positive and Negative Fire anomalies looks similar.
+\newpage
+
+
+
+
+## SUMMARY
+
+1.Fire count has increased with time. Firecount for 2018 and 2019 are alomost double the count for 2017.
+
+2. There is a baseline shift in the Fire count from 2011. From 2001 to 2010 the line plot is almost flat. In 2011 the Fire count is the lowest.
+
+3. Locations with fire split wr.to LST anomaly:  almost 1:1 for positive and negative anomalies.
+
+4. Th positive and negative anomalies show a similar relation with fire count.
+
+5.I got weak relation between Land Surface Temperature anomaly and Fire occurrences.However, the data is not sufficient to confirm the relationship. Also, the point 4 doesn't seem to align with the relation.
+
+## Next steps
+
+1. Take 2001 -2010 as baseline model.
+
+2. Study the Fire causes.Add them in the model as categorical variables.
+
+3. Study the lower fire count in 2011.
+
+\newpage
+
+\bigskip
+
+
+\bigskip
+
+##    THANK YOU
+
