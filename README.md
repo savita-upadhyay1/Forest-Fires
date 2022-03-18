@@ -1,7 +1,10 @@
 # Forest-Fires
-Worked on MODIS data for Victoria Land Surface Temperature Anomalies and Forest Fires from 2001 to 2019(January : Peak Summer Season).
+searchers have observed that land surface temperature anomalies could be the reason of lower moisture content of vegetations and could increase the possibility of fire.The objective for this paper is assess the relationship between land surface temperature(LST) anomalies and forest fire occurrence as well as further exploring related fire prediction factors.
 
-# EXPLORATORY ANALYSIS : Hovomoller plots to study the change in Temprature anaomaly behavior with latitude and longitdue across years and Spatial Mean plots.
+
+
+# EXPLORATORY ANALYSIS : 
+Hovomoller plots to study the change in Temprature anaomaly behavior with latitude and longitdue across years and Spatial Mean plots.
 
 Binary regression analysis on Fire incidents using Basis function
 
@@ -25,3 +28,6 @@ Binary regression analysis on Fire incidents using Basis function
 
 3. Study the lower fire count in 2011.
 4. Study vegetation and  precipitation data.
+
+
+referrence:https://dataverse.scholarsportal.info/dataset.xhtml?persistentId=doi:10.5683/SP2/09GTEU. Refered this paper ONLY for input data and Victoria climate and vegetation information. Methodology and analysis are different
