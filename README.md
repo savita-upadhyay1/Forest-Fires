@@ -1,5 +1,5 @@
 # Forest-Fires
-searchers have observed that land surface temperature anomalies could be the reason of lower moisture content of vegetations and could increase the possibility of fire.The objective for this paper is assess the relationship between land surface temperature(LST) anomalies and forest fire occurrence as well as further exploring related fire prediction factors.
+Researchers have observed that land surface temperature anomalies could be the reason of lower moisture content of vegetations and could increase the possibility of fire.The objective for this paper is assess the relationship between land surface temperature(LST) anomalies and forest fire occurrence as well as further exploring related fire prediction factors.
 
 
 
